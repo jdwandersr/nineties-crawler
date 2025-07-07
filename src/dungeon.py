@@ -1,12 +1,14 @@
-from typing import List, Tuple, Optional, Dict, Set
+from typing import List, Tuple, Optional, Dict
 import random
+from src.entities import Mob
 
 class Tile:
-    def __init__(self, walkable: bool = True, has_clue: bool = False, has_up_stairs: bool = False, has_down_stairs: bool = False) -> None:
+    def __init__(self, walkable: bool = True, has_clue: bool = False, has_up_stairs: bool = False, has_down_stairs: bool = False, mob: Optional[Mob] = None) -> None:
         self.walkable = walkable
         self.has_clue = has_clue
         self.has_up_stairs = has_up_stairs
         self.has_down_stairs = has_down_stairs
+        self.mob = mob  # Mob present on this tile
 
 class Dungeon:
     def __init__(self, width: int = 20, height: int = 15, num_loops: int = 10) -> None:
@@ -22,6 +24,7 @@ class Dungeon:
         self._add_loops(num_loops)
         self._generate_clues()
         self._generate_stairs()
+        self._spawn_mobs()
     
     def _generate_maze(self) -> None:
         """Generates a maze using randomized DFS. All walkable tiles will be connected."""
@@ -105,6 +108,33 @@ class Dungeon:
 
     def get_clue(self, x: int, y: int) -> Optional[str]:
         return self.clues.get((x, y))
+
+    def _spawn_mobs(self) -> None:
+        """Spawn mobs at random walkable tiles that don't have clues or stairs."""
+        from src.entities import get_default_mobs
+        
+        # Get available tiles for mob spawning
+        available_tiles = []
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.grid[y][x]
+                if (tile.walkable and not tile.has_clue and 
+                    not tile.has_up_stairs and not tile.has_down_stairs):
+                    available_tiles.append((x, y))
+        
+        # Spawn 3-6 mobs randomly
+        num_mobs = random.randint(3, min(6, len(available_tiles)))
+        mob_templates = get_default_mobs()
+        
+        for _ in range(num_mobs):
+            if available_tiles:
+                x, y = random.choice(available_tiles)
+                available_tiles.remove((x, y))
+                
+                # Create a copy of a random mob template
+                mob_template = random.choice(mob_templates)
+                mob = Mob(mob_template.name, mob_template.hp, mob_template.atk)
+                self.grid[y][x].mob = mob
 
     def get_random_walkable(self) -> Tuple[int, int]:
         walkable = [(x, y) for y in range(self.height) for x in range(self.width)

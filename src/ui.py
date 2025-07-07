@@ -1,6 +1,7 @@
 import pygame
 from typing import Any, Optional, List
 from src.dungeon import Dungeon
+from src.combat import CombatEncounter
 
 
 class MainMenu:
@@ -45,6 +46,7 @@ class DungeonView:
         "player": (60, 220, 60),
         "up_stairs": (220, 220, 60),
         "down_stairs": (220, 120, 60),
+        "mob": (220, 60, 60),  # Red color for mobs
     }
 
     def __init__(self, screen: pygame.Surface, dungeon: Dungeon, player_pos: List[int]) -> None:
@@ -75,6 +77,13 @@ class DungeonView:
             if tile.walkable:
                 self.player_pos[0] = new_x
                 self.player_pos[1] = new_y
+                
+                # Check for mob encounter first
+                if tile.mob and tile.mob.is_alive():
+                    self.info_text = self.font.render(f"You encountered a {tile.mob.name}! Entering combat...", True, (255, 100, 100))
+                    self.info_timer = 120
+                    return "combat"
+                
                 # Check for clue
                 clue = self.dungeon.get_clue(new_x, new_y)
                 if clue:
@@ -110,6 +119,8 @@ class DungeonView:
                     color = self.TILE_COLORS["up_stairs"]
                 elif tile.has_down_stairs:
                     color = self.TILE_COLORS["down_stairs"]
+                elif tile.mob and tile.mob.is_alive():
+                    color = self.TILE_COLORS["mob"]
                 pygame.draw.rect(
                     self.screen,
                     color,
@@ -139,3 +150,100 @@ class DungeonView:
             self.info_timer -= 1
             if self.info_timer <= 0:
                 self.info_text = None
+
+
+class CombatView:
+    """Simple combat UI for mob encounters."""
+    
+    def __init__(self, screen: pygame.Surface, combat: CombatEncounter) -> None:
+        self.screen = screen
+        self.combat = combat
+        self.font = pygame.font.SysFont("Consolas", 20)
+        self.title_font = pygame.font.SysFont("Consolas", 28)
+        self.info_messages: List[str] = []
+    
+    def handle_event(self, event: Any) -> Optional[str]:
+        """Handle combat input. Returns state change or None."""
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                return "main_menu"
+            elif event.key == pygame.K_SPACE:
+                if self.combat.is_over():
+                    return "explore"  # Return to exploration
+                else:
+                    # Execute combat turn
+                    if self.combat.turn == 0:  # Party turn
+                        self.combat.party_action("attack", 0)
+                        self.info_messages.append("Party attacks!")
+                        if not self.combat.is_over():
+                            self.combat.next_turn()
+                    else:  # Enemy turn
+                        self.combat.enemy_action()
+                        self.info_messages.append("Enemies attack!")
+                        if not self.combat.is_over():
+                            self.combat.next_turn()
+                    
+                    # Keep only last 5 messages
+                    self.info_messages = self.info_messages[-5:]
+        
+        return None
+    
+    def render(self) -> None:
+        """Render the combat screen."""
+        self.screen.fill((20, 20, 20))
+        
+        # Title
+        title = self.title_font.render("COMBAT", True, (255, 255, 255))
+        self.screen.blit(title, (40, 40))
+        
+        # Party status
+        y_offset = 100
+        party_title = self.font.render("PARTY:", True, (100, 255, 100))
+        self.screen.blit(party_title, (40, y_offset))
+        y_offset += 30
+        
+        for i, member in enumerate(self.combat.party):
+            status = "ALIVE" if member.is_alive() else "DEAD"
+            color = (255, 255, 255) if member.is_alive() else (100, 100, 100)
+            text = self.font.render(f"{member.name} ({member.char_class}): {member.hp}/{member.max_hp} HP - {status}", True, color)
+            self.screen.blit(text, (60, y_offset))
+            y_offset += 25
+        
+        # Enemy status
+        y_offset += 20
+        enemy_title = self.font.render("ENEMIES:", True, (255, 100, 100))
+        self.screen.blit(enemy_title, (40, y_offset))
+        y_offset += 30
+        
+        for i, enemy in enumerate(self.combat.enemies):
+            status = "ALIVE" if enemy.is_alive() else "DEAD"
+            color = (255, 255, 255) if enemy.is_alive() else (100, 100, 100)
+            text = self.font.render(f"{enemy.name}: {enemy.hp}/{enemy.max_hp} HP - {status}", True, color)
+            self.screen.blit(text, (60, y_offset))
+            y_offset += 25
+        
+        # Combat messages
+        y_offset += 20
+        messages_title = self.font.render("COMBAT LOG:", True, (255, 255, 100))
+        self.screen.blit(messages_title, (40, y_offset))
+        y_offset += 30
+        
+        for message in self.info_messages:
+            text = self.font.render(message, True, (200, 200, 200))
+            self.screen.blit(text, (60, y_offset))
+            y_offset += 25
+        
+        # Instructions
+        if self.combat.is_over():
+            if all(not e.is_alive() for e in self.combat.enemies):
+                result = self.font.render("VICTORY! Press SPACE to continue", True, (100, 255, 100))
+            else:
+                result = self.font.render("DEFEAT! Press SPACE to continue", True, (255, 100, 100))
+            self.screen.blit(result, (40, self.screen.get_height() - 80))
+        else:
+            whose_turn = "Party" if self.combat.turn == 0 else "Enemy"
+            turn_text = self.font.render(f"{whose_turn} turn - Press SPACE to attack", True, (255, 255, 255))
+            self.screen.blit(turn_text, (40, self.screen.get_height() - 80))
+        
+        escape_text = self.font.render("Press ESC to return to main menu", True, (150, 150, 150))
+        self.screen.blit(escape_text, (40, self.screen.get_height() - 50))

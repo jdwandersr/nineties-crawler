@@ -5,6 +5,7 @@ class Mob:
     def __init__(self, name: str, hp: int, atk: int) -> None:
         self.name = name
         self.hp = hp
+        self.max_hp = hp  # Add max_hp for consistency with Character
         self.atk = atk
 
     def is_alive(self) -> bool:
