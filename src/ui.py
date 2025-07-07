@@ -80,9 +80,10 @@ class DungeonView:
                 
                 # Check for mob encounter first
                 if tile.mob and tile.mob.is_alive():
+                    # When player steps on a tile with a living mob, trigger combat
                     self.info_text = self.font.render(f"You encountered a {tile.mob.name}! Entering combat...", True, (255, 100, 100))
                     self.info_timer = 120
-                    return "combat"
+                    return "combat"  # Signal to game state manager to switch to combat mode
                 
                 # Check for clue
                 clue = self.dungeon.get_clue(new_x, new_y)
@@ -153,7 +154,19 @@ class DungeonView:
 
 
 class CombatView:
-    """Simple combat UI for mob encounters."""
+    """
+    Simple combat UI for mob encounters.
+    
+    This view provides a turn-based combat interface that displays:
+    - Party member status (HP, class, alive/dead)
+    - Enemy status (HP, alive/dead)
+    - Combat log with recent actions
+    - Turn-based combat controls
+    
+    Controls:
+    - SPACE: Execute combat action (attack)
+    - ESC: Return to main menu
+    """
     
     def __init__(self, screen: pygame.Surface, combat: CombatEncounter) -> None:
         self.screen = screen

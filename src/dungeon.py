@@ -110,7 +110,13 @@ class Dungeon:
         return self.clues.get((x, y))
 
     def _spawn_mobs(self) -> None:
-        """Spawn mobs at random walkable tiles that don't have clues or stairs."""
+        """
+        Spawn mobs at random walkable tiles that don't have clues or stairs.
+        
+        This method places 3-6 mobs randomly throughout the dungeon, ensuring
+        they don't conflict with existing dungeon features like clues or stairs.
+        Each mob is created from the default mob templates with randomized selection.
+        """
         from src.entities import get_default_mobs
         
         # Get available tiles for mob spawning

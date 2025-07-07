@@ -1,6 +1,5 @@
 """Tests for mob encounter functionality."""
 
-import pytest
 from src.dungeon import Dungeon
 from src.entities import Mob
 from src.combat import CombatEncounter
