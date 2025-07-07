@@ -2,9 +2,11 @@ from typing import List, Tuple, Optional, Dict, Set
 import random
 
 class Tile:
-    def __init__(self, walkable: bool = True, has_clue: bool = False) -> None:
+    def __init__(self, walkable: bool = True, has_clue: bool = False, has_up_stairs: bool = False, has_down_stairs: bool = False) -> None:
         self.walkable = walkable
         self.has_clue = has_clue
+        self.has_up_stairs = has_up_stairs
+        self.has_down_stairs = has_down_stairs
 
 class Dungeon:
     def __init__(self, width: int = 20, height: int = 15, num_loops: int = 10) -> None:
@@ -19,6 +21,7 @@ class Dungeon:
         self._generate_maze()
         self._add_loops(num_loops)
         self._generate_clues()
+        self._generate_stairs()
     
     def _generate_maze(self) -> None:
         """Generates a maze using randomized DFS. All walkable tiles will be connected."""
@@ -84,6 +87,21 @@ class Dungeon:
                 self.grid[y][x].has_clue = True
                 self.clues[(x, y)] = f"Clue {len(clue_locs)+1}: Something cryptic."
                 clue_locs.add((x, y))
+
+    def _generate_stairs(self) -> None:
+        """Place up stairs and down stairs at random walkable tiles."""
+        walkable = [(x, y) for y in range(self.height) for x in range(self.width)
+                    if self.grid[y][x].walkable and not self.grid[y][x].has_clue]
+        
+        if len(walkable) >= 2:
+            # Place up stairs
+            up_pos = random.choice(walkable)
+            self.grid[up_pos[1]][up_pos[0]].has_up_stairs = True
+            walkable.remove(up_pos)
+            
+            # Place down stairs
+            down_pos = random.choice(walkable)
+            self.grid[down_pos[1]][down_pos[0]].has_down_stairs = True
 
     def get_clue(self, x: int, y: int) -> Optional[str]:
         return self.clues.get((x, y))

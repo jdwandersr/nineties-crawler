@@ -35,7 +35,11 @@ class Game:
                         )
                         self.state = "explore"
                 elif self.state == "explore" and self.dungeon_view:
-                    self.dungeon_view.handle_event(event)
+                    action = self.dungeon_view.handle_event(event)
+                    if action == "main_menu":
+                        self.state = "main_menu"
+                        self.dungeon = None
+                        self.dungeon_view = None
 
             self.screen.fill((0, 0, 0))
             if self.state == "main_menu":

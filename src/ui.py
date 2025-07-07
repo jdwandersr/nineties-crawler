@@ -11,6 +11,9 @@ class MainMenu:
         self.subtitle = pygame.font.SysFont("Consolas", 24).render(
             "Press [N] for New Game or [ESC] to quit", True, (200, 200, 200)
         )
+        self.instructions = pygame.font.SysFont("Consolas", 16).render(
+            "In game: WASD/Arrow keys to move, Enter on stairs, ESC to return", True, (150, 150, 150)
+        )
 
     def handle_event(self, event: Any) -> Optional[str]:
         if event.type == pygame.KEYDOWN:
@@ -28,6 +31,9 @@ class MainMenu:
         self.screen.blit(
             self.subtitle, (w // 2 - self.subtitle.get_width() // 2, h // 3 + 60)
         )
+        self.screen.blit(
+            self.instructions, (w // 2 - self.instructions.get_width() // 2, h // 3 + 100)
+        )
 
 
 class DungeonView:
@@ -37,6 +43,8 @@ class DungeonView:
         "wall": (80, 20, 20),
         "clue": (40, 40, 120),
         "player": (60, 220, 60),
+        "up_stairs": (220, 220, 60),
+        "down_stairs": (220, 120, 60),
     }
 
     def __init__(self, screen: pygame.Surface, dungeon: Dungeon, player_pos: List[int]) -> None:
@@ -47,10 +55,12 @@ class DungeonView:
         self.info_text: Optional[pygame.Surface] = None
         self.info_timer: int = 0
 
-    def handle_event(self, event: Any) -> None:
+    def handle_event(self, event: Any) -> Optional[str]:
         dx, dy = 0, 0
         if event.type == pygame.KEYDOWN:
-            if event.key in (pygame.K_UP, pygame.K_w):
+            if event.key == pygame.K_ESCAPE:
+                return "main_menu"
+            elif event.key in (pygame.K_UP, pygame.K_w):
                 dy = -1
             elif event.key in (pygame.K_DOWN, pygame.K_s):
                 dy = 1
@@ -70,6 +80,22 @@ class DungeonView:
                 if clue:
                     self.info_text = self.font.render(clue, True, (255, 255, 200))
                     self.info_timer = 120  # Show for 2 seconds (60fps*2)
+                # Check for stairs
+                elif tile.has_up_stairs:
+                    self.info_text = self.font.render("You found up stairs! Press Enter to use them.", True, (255, 255, 200))
+                    self.info_timer = 120
+                elif tile.has_down_stairs:
+                    self.info_text = self.font.render("You found down stairs! Press Enter to use them.", True, (255, 255, 200))
+                    self.info_timer = 120
+        
+        # Check if player is on stairs and presses Enter
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+            px, py = self.player_pos
+            tile = self.dungeon.grid[py][px]
+            if tile.has_up_stairs or tile.has_down_stairs:
+                return "main_menu"
+        
+        return None
 
     def render(self) -> None:
         # Draw dungeon tiles
@@ -80,6 +106,10 @@ class DungeonView:
                 )
                 if tile.has_clue:
                     color = self.TILE_COLORS["clue"]
+                elif tile.has_up_stairs:
+                    color = self.TILE_COLORS["up_stairs"]
+                elif tile.has_down_stairs:
+                    color = self.TILE_COLORS["down_stairs"]
                 pygame.draw.rect(
                     self.screen,
                     color,
